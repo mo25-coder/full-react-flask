@@ -1,0 +1,4 @@
+user table
+1. name : Mohamed, username: Mohamed, Password : 1
+
+pip3 install flask flask_wtf flask_cors flask_sqlalchemy flask_session
