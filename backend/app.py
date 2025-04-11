@@ -7,57 +7,17 @@ from models import db, WatchLater, Show
 from functions import execute_query
 app = Flask(__name__)
 app.config.from_object("config.Config")
+from flask_session import Session
 
-CORS(app)  # Enable CORS for frontend requests
+# CORS(app)  # Enable CORS for frontend requests
+CORS(app, supports_credentials=True)
 csrf = CSRFProtect(app)  # Protect against CSRF attacks
 app.secret_key = "secret_key"
-
-
-
-# from flask import Flask, request, session, jsonify, render_template
-# from werkzeug.security import check_password_hash
-# from flask_wtf.csrf import CSRFProtect
-# from forms import SignUpForm
-# from flask_cors import CORS
-# from models import db, WatchLater, Show
-# from functions import execute_query
-
-# app = Flask(__name__)
-# app.config.from_object("config.Config")
-
-# # 👇 CORS setup for React
-# CORS(app, supports_credentials=True, resources={r"/*": {"origins": "http://localhost:5173"}})
-
-# csrf = CSRFProtect(app)
-# app.secret_key = "secret_key"
-
-
-# from flask import Flask, request, session, jsonify, render_template
-# from werkzeug.security import check_password_hash
-# from flask_wtf.csrf import CSRFProtect
-# from forms import SignUpForm
-# from flask_cors import CORS
-# from models import db, WatchLater, Show
-# from functions import execute_query
-# # temporary import 
-# from flask_wtf.csrf import CSRFProtect, CSRFError
-
-# app = Flask(__name__)
-# app.config.from_object("config.Config")
-# app.secret_key = "secret_key"
-
-# # ✅ Secure CORS setup
-# # CORS(app, supports_credentials=True, resources={r"/*": {"origins": "http://localhost:5173"}})
-# # CORS(app, supports_credentials=True)
-
-# # ✅ CSRF protection
-# # csrf = CSRFProtect(app)
-
-# from flask_wtf.csrf import CSRFProtect
-
-# csrf = CSRFProtect(app)
-
-
+# Configure session to use filesystem (instead of signed cookies)
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_TYPE"] = "filesystem"
+# app.config['DEBUG'] = True
+Session(app)
 
 database = "prime_video.db"
 
@@ -65,12 +25,7 @@ database = "prime_video.db"
 def main():
     return jsonify({"message": "Welcome to Prime Video API"}), 200
 
-# @app.route("/signin", methods=["GET", "POST"])
-# @app.route("/SignIn", methods=["GET", "POST"])
-# def signin():
-# @app.route("/signin", methods=["POST", "GET"])
-# @csrf_exempt
-# def signin():
+
 @csrf.exempt
 @app.route("/signin", methods=["POST", "GET"])
 @app.route("/SignIn", methods=["GET", "POST"])
@@ -80,17 +35,7 @@ def signin():
     # rows = execute_query(database, query, fetch=True)
     # print(rows)
     if request.method == "POST":
-    #     data = request.get_json()
-    #     username = data.get("username")
-    #     password = data.get("password")
-    #     print("Headers:", dict(request.headers))
-    #     print("Body:", request.get_data())
-    #     print("JSON:", request.get_json())
-    #     print("Headers:", dict(request.headers))
-    #     print("JSON body:", request.get_json())
 
-    #     if not request.form.get("username") or not request.form.get("password"):
-    #         return jsonify({"error": "Missing username or password"}), 400
         # Execute query to fetch user by username
         if not request.is_json:
             return jsonify({"error": "Request must be JSON"}), 400
@@ -98,30 +43,35 @@ def signin():
         data = request.get_json()
         username = data.get("username")
         password = data.get("password")
-        print("Headers:", dict(request.headers))
-        print("Body:", request.get_data())
-        print("JSON:", request.get_json())
-        print("Headers:", dict(request.headers))
-        print("JSON body:", request.get_json())
+        # print("Headers:", dict(request.headers))
+        # print("Body:", request.get_data())
+        # print("JSON:", request.get_json())
+        # print("Headers:", dict(request.headers))
+        # print("JSON body:", request.get_json())
         if not username or not password:
             return jsonify({"error": "Missing username or password"}), 400
 
         # query = "SELECT * FROM user WHERE username = ?"
         # rows = execute_query(database, query, request.form.get("username"), fetch=True)
-        query = "SELECT * FROM user WHERE username = ?"
+        query = "SELECT * FROM user WHERE email = ?"
         rows = execute_query(database, query, username, fetch=True)
 
         print(rows)
-
-        if len(rows) != 1 or not check_password_hash(rows[0][2], request.form.get("password")):
+        # Check if the user exists and verify the password (password is hashed in the database)
+        # if len(rows) != 1 or not check_password_hash(rows[0][3], request.form.get("password")):
+        if len(rows) != 1 or rows[0][3] != password:
             return jsonify({"error": "Invalid username or password"}), 400
 
         session["user_id"] = rows[0][0]
+        print("User ID:", session["user_id"])
 
         return jsonify({"logged_in": True, "message": "Login successful"}), 200
 
     elif request.method == "GET":
+        print("Session content:", dict(session))
         return jsonify({"logged_in": "user_id" in session}), 200
+        # return jsonify({"logged_in": session['user_id']}), 200
+        
         # return render_template("login.html", {"csrf_token": csrf.generate_csrf()})
     
 # SignUp Route

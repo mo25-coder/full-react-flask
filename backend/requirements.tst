@@ -2,3 +2,4 @@ flask
 flask_wtf
 flask_cors
 flask_sqlalchemy
+flask_session
