@@ -6,7 +6,7 @@ open backend in vs code or by cmd
 #### 2. create a virtual environment (called '.venv' here)
 ```bash virtualenv .venv```
 #### 3. activate the virtual environment
-```bash .venv\Scripts\activate``` (on windows) or ```bash source v.env/bin/activate```
+```bash .venv\Scripts\activate``` 
 #### 4. install the required packages
 ```bash pip install -r requirements.txt```
 ### #.to run backend
