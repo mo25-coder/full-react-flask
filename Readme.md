@@ -4,7 +4,7 @@ open backend in vs code or by cmd
 #### 1. (if you don't already have virtualenv installed)
 ``` pip install virtualenv ```
 #### 2. create a virtual environment (called '.venv' here)
-``` virtualenv .venv```
+```virtualenv .venv```
 #### 3. activate the virtual environment
 ```.venv\Scripts\activate``` 
 #### 4. install the required packages
