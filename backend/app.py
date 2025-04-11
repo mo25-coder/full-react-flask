@@ -16,6 +16,10 @@ app.secret_key = "secret_key"
 # Configure session to use filesystem (instead of signed cookies)
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
+app.config.update(
+    SESSION_COOKIE_SAMESITE='None',
+    SESSION_COOKIE_SECURE=True
+)
 # app.config['DEBUG'] = True
 Session(app)
 
@@ -39,7 +43,9 @@ def signin():
         # Execute query to fetch user by username
         if not request.is_json:
             return jsonify({"error": "Request must be JSON"}), 400
-
+        if request.form:
+            username = request.form.get("username")
+            password = request.form.get("password")
         data = request.get_json()
         username = data.get("username")
         password = data.get("password")
@@ -68,6 +74,8 @@ def signin():
         return jsonify({"logged_in": True, "message": "Login successful"}), 200
 
     elif request.method == "GET":
+        print("Cookies:", request.cookies)
+        print("Session:", dict(session))
         print("Session content:", dict(session))
         return jsonify({"logged_in": "user_id" in session}), 200
         # return jsonify({"logged_in": session['user_id']}), 200
@@ -196,50 +204,57 @@ def userdata():
     #                                     c.id AS category_id, 
     #                                     c.name AS category_name,
     #                                     CASE WHEN l.show_id IS NOT NULL THEN 1 ELSE 0 END AS is_liked, 
-    #                                     CASE WHEN d.show_id IS NOT NULL THEN 1 ELSE 0 END AS is_disliked
+    #                                     CASE WHEN d.show_id IS NOT NULL THEN 1 ELSE 0 END AS is_disliked,
+    #                                     CASE WHEN w.show_id IS NOT NULL THEN 1 ELSE 0 END AS is_watch_later
     #                                 FROM 
     #                                     user u
     #                                 JOIN 
-    #                                     Show s ON s.Category_id = c.id
+    #                                     Category c ON 1=1
     #                                 JOIN 
-    #                                     Category c ON c.id = s.Category_id
+    #                                     Show s ON s.Category_id = c.id
     #                                 LEFT JOIN 
     #                                     like l ON l.user_id = u.id AND l.show_id = s.id
     #                                 LEFT JOIN 
     #                                     dislike d ON d.user_id = u.id AND d.show_id = s.id
+    #                                 LEFT JOIN 
+    #                                     watch_later w ON w.user_id = u.id AND w.show_id = s.id
     #                                 WHERE 
-    #                                     u.id = ?
+    #                                     u.id = ?;
     #                      """, session["user_id"] ,fetch=True)
     # test
     rows = execute_query(database, """
-                                SELECT 
-                                    u.id AS user_id, 
-                                    u.name AS user_name, 
-                                    u.email AS user_email, 
-                                    s.id AS show_id, 
-                                    s.name AS show_name, 
-                                    s.description AS show_description, 
-                                    s.rating AS show_rating, 
-                                    s.time AS show_time, 
-                                    s.age_limit AS show_age_limit, 
-                                    s.Category AS show_category, 
-                                    c.id AS category_id, 
-                                    c.name AS category_name,
-                                    CASE WHEN l.show_id IS NOT NULL THEN 1 ELSE 0 END AS is_liked, 
-                                    CASE WHEN d.show_id IS NOT NULL THEN 1 ELSE 0 END AS is_disliked
-                                FROM 
-                                    user u
-                                JOIN 
-                                    Show s ON s.Category_id = c.id
-                                JOIN 
-                                    Category c ON c.id = s.Category_id
-                                LEFT JOIN 
-                                    like l ON l.user_id = u.id AND l.show_id = s.id
-                                LEFT JOIN 
-                                    dislike d ON d.user_id = u.id AND d.show_id = s.id
-                                WHERE 
-                                    u.id = 2
+                                    SELECT 
+                                        u.id AS user_id, 
+                                        u.name AS user_name, 
+                                        u.email AS user_email, 
+                                        s.id AS show_id, 
+                                        s.name AS show_name, 
+                                        s.description AS show_description, 
+                                        s.rating AS show_rating, 
+                                        s.time AS show_time, 
+                                        s.age_limit AS show_age_limit, 
+                                        s.Category AS show_category, 
+                                        c.id AS category_id, 
+                                        c.name AS category_name,
+                                        CASE WHEN l.show_id IS NOT NULL THEN 1 ELSE 0 END AS is_liked, 
+                                        CASE WHEN d.show_id IS NOT NULL THEN 1 ELSE 0 END AS is_disliked,
+                                        CASE WHEN w.show_id IS NOT NULL THEN 1 ELSE 0 END AS is_watch_later
+                                    FROM 
+                                        user u
+                                    JOIN 
+                                        Category c ON 1=1
+                                    JOIN 
+                                        Show s ON s.Category_id = c.id
+                                    LEFT JOIN 
+                                        like l ON l.user_id = u.id AND l.show_id = s.id
+                                    LEFT JOIN 
+                                        dislike d ON d.user_id = u.id AND d.show_id = s.id
+                                    LEFT JOIN 
+                                        watch_later w ON w.user_id = u.id AND w.show_id = s.id
+                                    WHERE 
+                                        u.id = 2;
                         """,fetch=True)
+    print("Session:", dict(session))
     
     if not rows:
         return jsonify({"error": "User not found"}), 404
@@ -248,7 +263,8 @@ def userdata():
             "id": rows[0][0],
             "name": rows[0][1],
             "email_or_phone": rows[0][2],
-            "shows": []
+            "shows": [],
+            "islogged_in": True
         }
 
         # Iterate through the rows and organize the show and category data
@@ -263,8 +279,9 @@ def userdata():
                 "show_category": row[9],
                 "category_id": row[10],
                 "category_name": row[11],
-                "is_liked": bool(row[12]),  # 1 means liked, 0 means not liked
-                "is_disliked": bool(row[13])  # 1 means disliked, 0 means not disliked
+                "is_liked": bool(row[12]),         # 1 means liked, 0 means not liked
+                "is_disliked": bool(row[13]),      # 1 means disliked, 0 means not disliked
+                "is_watch_later": bool(row[14])    # 1 means in watchlist, 0 means not
             }
 
             # Add the show data to the user's shows list
